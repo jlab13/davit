@@ -36,6 +36,12 @@ struct MainWindow: View {
     @ObservedObject private var presence = WindowPresence.shared
     @Environment(\.openSettings) private var openSettings
     @State private var selection: SidebarSection? = .dashboard
+    @FocusState private var sidebarFocused: Bool
+    /// Set when code (Dashboard click, ⌘K, deep link) switches the section, so
+    /// that switch doesn't pull keyboard focus into the sidebar.
+    @State private var programmaticSelection = false
+    /// Whether the detail column has a list Tab can move into.
+    @State private var contentListFocusable = false
 
     var body: some View {
         Group {
@@ -53,18 +59,19 @@ struct MainWindow: View {
                     sidebar
                 } detail: {
                     detail
+                        .onPreferenceChange(ContentListFocusableKey.self) { contentListFocusable = $0 }
                 }
             }
         }
         .onChange(of: state.pendingContainerOpen) {
             // A container was clicked from another section (e.g. Dashboard) —
             // switch to Containers, which consumes the intent and pushes detail.
-            if state.pendingContainerOpen != nil { selection = .containers }
+            if state.pendingContainerOpen != nil { select(.containers) }
         }
         .onChange(of: state.pendingOpen?.section) {
             // ⌘K jumped to a resource: switch to its section; that section's
             // view consumes state.pendingOpen and opens the detail.
-            if let section = state.pendingOpen?.section { selection = section }
+            if let section = state.pendingOpen?.section { select(section) }
         }
         .sheet(isPresented: $state.showCommandPalette) {
             CommandPalette()
@@ -166,11 +173,38 @@ struct MainWindow: View {
                 }
             }
             .listStyle(.sidebar)
+            .focused($sidebarFocused)
+            .onChange(of: selection) {
+                // A click selects the row without making the table first
+                // responder (gray selection, arrows ignored); claim focus for
+                // every switch the user makes. Same fix as SelectableList.
+                if programmaticSelection {
+                    programmaticSelection = false
+                } else {
+                    sidebarFocused = true
+                }
+            }
+            .onKeyPress(.tab, phases: .down) { press in
+                // Tab goes straight to the section's list rather than through
+                // the toolbar first; with no list there, the usual key loop.
+                guard !press.modifiers.contains(.shift), contentListFocusable else { return .ignored }
+                NotificationCenter.default.post(name: .davitFocusContentList, object: nil)
+                return .handled
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .davitFocusSidebar)) { _ in
+                sidebarFocused = true
+            }
 
             Divider()
             systemFooter
         }
         .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 300)
+    }
+
+    private func select(_ section: SidebarSection) {
+        guard selection != section else { return }
+        programmaticSelection = true
+        selection = section
     }
 
     private func sidebarRow(_ section: SidebarSection, badge: Int? = nil) -> some View {

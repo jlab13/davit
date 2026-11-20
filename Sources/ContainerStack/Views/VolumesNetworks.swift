@@ -78,27 +78,89 @@ struct VolumeListContent: View {
     var scrollable = true
     var browse: (VolumeRecord) -> Void = { _ in }
 
+    @State private var selection: Set<String> = []
+    @State private var confirmDelete = false
+
+    private var deleteTargets: [VolumeRecord] {
+        ListSelection.targets(volumes, selected: selection, id: \.id)
+    }
+
     var body: some View {
-        CardList(items: volumes, scrollable: scrollable) { volume in
-            HoverRow(action: { browse(volume) }) {
-                VolumeRow(volume: volume, inUse: usedNames.contains(volume.name))
-            }
-            .contextMenu {
-                Button("Browse Files…") { browse(volume) }
-                Button("Copy Source Path") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(volume.source ?? "", forType: .string)
-                }
-                Button("Reveal in Finder") {
-                    if let src = volume.source {
-                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: src)])
+        if scrollable {
+            SelectableList(
+                selection: $selection,
+                visibleIDs: volumes.map(\.id),
+                primaryAction: { id in
+                    if let volume = volumes.first(where: { $0.id == id }) { browse(volume) }
+                },
+                deleteAction: { requestDelete() },
+                content: {
+                    ForEach(volumes) { volume in
+                        ListRowContent {
+                            VolumeRow(volume: volume, inUse: usedNames.contains(volume.name))
+                        }
+                        .selectableListRow()
+                        .tag(volume.id)
+                    }
+                },
+                menu: { rowMenu($0) }
+            )
+            .confirmationDialog(
+                Text("Delete \(deleteTargets.count) Volumes?",
+                     comment: "Confirmation title for deleting selected volumes — the value is the number of volumes."),
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    deleteTargets.forEach { volume in
+                        state.perform(volume.id) { try await ContainerService.deleteVolume(volume.name) }
                     }
                 }
-                Divider()
-                Button("Delete", role: .destructive) {
-                    state.perform(volume.id) { try await ContainerService.deleteVolume(volume.name) }
-                }
+                Button("Cancel", role: .cancel) {}
             }
+        } else {
+            CardList(items: volumes, scrollable: false) { volume in
+                HoverRow(action: { browse(volume) }) {
+                    VolumeRow(volume: volume, inUse: usedNames.contains(volume.name))
+                }
+                .contextMenu { singleMenu(volume) }
+            }
+        }
+    }
+
+    private func requestDelete() {
+        guard !deleteTargets.isEmpty else { return }
+        confirmDelete = true
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ ids: Set<String>) -> some View {
+        let selected = volumes.filter { ids.contains($0.id) }
+        if selected.count == 1, let volume = selected.first {
+            singleMenu(volume)
+        } else if !selected.isEmpty {
+            Button(role: .destructive) { confirmDelete = true } label: {
+                Text("Delete \(selected.count) Volumes…",
+                     comment: "Bulk context-menu action that asks for confirmation — the value is the number of selected volumes.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func singleMenu(_ volume: VolumeRecord) -> some View {
+        Button("Browse Files…") { browse(volume) }
+        Button("Copy Source Path") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(volume.source ?? "", forType: .string)
+        }
+        Button("Reveal in Finder") {
+            if let src = volume.source {
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: src)])
+            }
+        }
+        Divider()
+        Button("Delete", role: .destructive) {
+            state.perform(volume.id) { try await ContainerService.deleteVolume(volume.name) }
         }
     }
 }
@@ -206,27 +268,90 @@ struct NetworkListContent: View {
     let networks: [NetworkRecord]
     var scrollable = true
 
+    @State private var selection: Set<String> = []
+    @State private var confirmDelete = false
+
+    /// Built-in networks can't be deleted, so they are not bulk targets.
+    private var deleteTargets: [NetworkRecord] {
+        ListSelection.targets(networks, selected: selection, id: \.id) { !$0.isBuiltin }
+    }
+
     var body: some View {
-        CardList(items: networks, scrollable: scrollable) { network in
-            HoverRow {
-                NetworkRow(network: network)
-            }
-            .contextMenu {
-                if let subnet = network.subnet {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(subnet, forType: .string)
-                    } label: {
-                        Text("Copy Subnet (\(subnet))",
-                             comment: "Context menu action — the value is the network's subnet.")
+        if scrollable {
+            SelectableList(
+                selection: $selection,
+                visibleIDs: networks.map(\.id),
+                deleteAction: { requestDelete() },
+                content: {
+                    ForEach(networks) { network in
+                        ListRowContent {
+                            NetworkRow(network: network)
+                        }
+                        .selectableListRow()
+                        .tag(network.id)
                     }
-                }
-                if !network.isBuiltin {
-                    Divider()
-                    Button("Delete", role: .destructive) {
+                },
+                menu: { rowMenu($0) }
+            )
+            .confirmationDialog(
+                Text("Delete \(deleteTargets.count) Networks?",
+                     comment: "Confirmation title for deleting selected networks — the value is the number of networks."),
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    deleteTargets.forEach { network in
                         state.perform(network.id) { try await ContainerService.deleteNetwork(network.name) }
                     }
                 }
+                Button("Cancel", role: .cancel) {}
+            }
+        } else {
+            CardList(items: networks, scrollable: false) { network in
+                HoverRow {
+                    NetworkRow(network: network)
+                }
+                .contextMenu { singleMenu(network) }
+            }
+        }
+    }
+
+    private func requestDelete() {
+        guard !deleteTargets.isEmpty else { return }
+        confirmDelete = true
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ ids: Set<String>) -> some View {
+        let selected = networks.filter { ids.contains($0.id) }
+        if selected.count == 1, let network = selected.first {
+            singleMenu(network)
+        } else {
+            let deletable = selected.filter { !$0.isBuiltin }
+            if !deletable.isEmpty {
+                Button(role: .destructive) { confirmDelete = true } label: {
+                    Text("Delete \(deletable.count) Networks…",
+                         comment: "Bulk context-menu action that asks for confirmation — the value is the number of selected networks.")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func singleMenu(_ network: NetworkRecord) -> some View {
+        if let subnet = network.subnet {
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(subnet, forType: .string)
+            } label: {
+                Text("Copy Subnet (\(subnet))",
+                     comment: "Context menu action — the value is the network's subnet.")
+            }
+        }
+        if !network.isBuiltin {
+            Divider()
+            Button("Delete", role: .destructive) {
+                state.perform(network.id) { try await ContainerService.deleteNetwork(network.name) }
             }
         }
     }

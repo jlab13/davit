@@ -603,3 +603,209 @@ struct HoverRow<Content: View>: View {
             )
     }
 }
+
+// MARK: - Native selectable list
+
+/// Row content for `SelectableList`: the same insets as `HoverRow`, but no
+/// hover fill. macOS lists draw their own selection and have no hover
+/// highlight; a second translucent fill on top of it looked muddy.
+struct ListRowContent<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+/// The native macOS list behind the five resource screens.
+///
+/// `List(selection:)` is a single Tab stop: arrows move the selection,
+/// Shift/⌘ extend it, one click selects, and double-click/Return runs the
+/// primary action. `contextMenu(forSelectionType:)` also gives a right-click on
+/// an unselected row just that row's selection. The card look is kept with
+/// `selectableListRow()`; row separators and alternating backgrounds are off.
+///
+/// The snapshot harness passes `scrollable: false` and stays on `CardList`:
+/// ImageRenderer cannot render the NSTableView behind `List`.
+struct SelectableList<ID: Hashable, Content: View, MenuContent: View>: View {
+    @Binding var selection: Set<ID>
+    /// Ids currently on screen, in display order; anything else silently
+    /// leaves the selection.
+    let visibleIDs: [ID]
+    var primaryAction: ((ID) -> Void)? = nil
+    var deleteAction: (() -> Void)? = nil
+    /// Restored after Back so the list — one Tab stop — gets the keyboard.
+    var focus: FocusState<Bool>.Binding? = nil
+    /// False while a detail is pushed over the list: Tab from the sidebar
+    /// must not focus a list nobody can see.
+    var acceptsRoutedFocus = true
+    let content: () -> Content
+    let menu: (Set<ID>) -> MenuContent
+
+    /// Used when the caller doesn't own the focus (lists without a detail to
+    /// come back from).
+    @FocusState private var ownFocus: Bool
+    /// Set while pruning rewrites the selection, so a filter keystroke that
+    /// drops a selected row doesn't pull focus out of the search field.
+    @State private var pruning = false
+
+    init(
+        selection: Binding<Set<ID>>,
+        visibleIDs: [ID],
+        primaryAction: ((ID) -> Void)? = nil,
+        deleteAction: (() -> Void)? = nil,
+        focus: FocusState<Bool>.Binding? = nil,
+        acceptsRoutedFocus: Bool = true,
+        @ViewBuilder content: @escaping () -> Content,
+        @ViewBuilder menu: @escaping (Set<ID>) -> MenuContent
+    ) {
+        self._selection = selection
+        self.visibleIDs = visibleIDs
+        self.primaryAction = primaryAction
+        self.deleteAction = deleteAction
+        self.focus = focus
+        self.acceptsRoutedFocus = acceptsRoutedFocus
+        self.content = content
+        self.menu = menu
+    }
+
+    var body: some View {
+        list
+            .contextMenu(forSelectionType: ID.self, menu: menu) { ids in
+                // Double-click / Return: only an unambiguous single row opens.
+                guard let id = ListSelection.primaryTarget(ids) else { return }
+                primaryAction?(id)
+            }
+            .onDeleteCommand { deleteAction?() }
+            .onKeyPress(.delete, phases: .down) { press in
+                // ⌘⌫ is the familiar macOS "delete row" chord; onDeleteCommand
+                // covers the bare Delete key only.
+                guard press.modifiers.contains(.command), let deleteAction else { return .ignored }
+                deleteAction()
+                return .handled
+            }
+            .onKeyPress(.return) {
+                // primaryAction fires on double-click only; Return has to be
+                // routed here. Only reachable while the list has focus, so
+                // Return in the search field never opens anything.
+                guard let primaryAction, let id = ListSelection.primaryTarget(selection) else { return .ignored }
+                primaryAction(id)
+                return .handled
+            }
+            .onKeyPress(KeyEquivalent.backTab, phases: .down) { _ in
+                // Shift-Tab goes back to the sidebar, mirroring Tab from there,
+                // instead of into the toolbar's search field.
+                NotificationCenter.default.post(name: .davitFocusSidebar, object: nil)
+                return .handled
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .davitFocusContentList)) { _ in
+                guard acceptsRoutedFocus else { return }
+                // This list style draws no focus ring, so focus with nothing
+                // selected is invisible until the first arrow key. Entering an
+                // empty selection selects the first row, as Finder and Mail do.
+                if selection.isEmpty, let first = visibleIDs.first {
+                    selection = [first]
+                }
+                setFocused()
+            }
+            .preference(key: ContentListFocusableKey.self, value: acceptsRoutedFocus)
+            .onChange(of: selection) {
+                // The double-click recognizer behind contextMenu(forSelectionType:)
+                // takes the click, so the table selects the row without becoming
+                // first responder: a gray selection that ignores the arrow keys.
+                // Claim focus for every selection the user makes.
+                if pruning {
+                    pruning = false
+                } else if !selection.isEmpty {
+                    setFocused()
+                }
+            }
+            .onChange(of: visibleIDs, initial: true) {
+                let pruned = ListSelection.pruned(selection, to: Set(visibleIDs))
+                guard pruned != selection else { return }
+                pruning = true
+                selection = pruned
+            }
+    }
+
+    private func setFocused() {
+        if let focus { focus.wrappedValue = true } else { ownFocus = true }
+    }
+
+    @ViewBuilder
+    private var list: some View {
+        if let focus {
+            baseList.focused(focus)
+        } else {
+            baseList.focused($ownFocus)
+        }
+    }
+
+    private var baseList: some View {
+        List(selection: $selection) {
+            content()
+        }
+        .listStyle(.inset)
+        .alternatingRowBackgrounds(.disabled)
+    }
+}
+
+/// Tab between the sidebar and the section's list skips the toolbar, so the
+/// two panes a keyboard user moves between are one keystroke apart. The two
+/// sit in different branches of the split view, hence notifications.
+extension Notification.Name {
+    static let davitFocusContentList = Notification.Name("DavitFocusContentList")
+    static let davitFocusSidebar = Notification.Name("DavitFocusSidebar")
+}
+
+extension KeyEquivalent {
+    /// What AppKit delivers for Shift-Tab (NSBackTabCharacter).
+    static let backTab = KeyEquivalent("\u{19}")
+}
+
+/// True when the detail column shows a `SelectableList` that can take focus
+/// (none on the Dashboard, in an empty state, or under a pushed detail).
+struct ContentListFocusableKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
+/// Esc on a pushed detail goes back, like the Back button. Esc travels the
+/// responder chain as cancelOperation, so a text field being edited still
+/// gets it first. Most details have nothing focusable, which leaves the
+/// window as first responder and Esc with nowhere to go: the detail takes
+/// focus itself on appear (without a focus ring) so onExitCommand is reached.
+private struct BackOnEscape: ViewModifier {
+    let back: () -> Void
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focusable()
+            .focusEffectDisabled()
+            .focused($focused)
+            .onAppear { focused = true }
+            .onExitCommand(perform: back)
+    }
+}
+
+extension View {
+    /// Esc pops this pushed detail (see `BackOnEscape`).
+    func backOnEscape(_ back: @escaping () -> Void) -> some View {
+        modifier(BackOnEscape(back: back))
+    }
+
+    /// Row chrome for `SelectableList`: transparent, separator-free rows with a
+    /// small gap, so the system selection highlight stays visible.
+    func selectableListRow() -> some View {
+        self
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 1, leading: 10, bottom: 1, trailing: 10))
+    }
+}

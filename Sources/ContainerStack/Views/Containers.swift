@@ -14,6 +14,7 @@ struct ContainersView: View {
     /// When set, the list shows only this group value ("show only this group").
     @State private var focusedGroup: String?
     @State private var path: [String] = []
+    @FocusState private var listFocused: Bool
 
     private var filtered: [ContainerRecord] {
         guard !search.isEmpty else { return state.containers }
@@ -46,6 +47,7 @@ struct ContainersView: View {
             .navigationTitle("Containers")
             .navigationDestination(for: String.self) { id in
                 ContainerDetailView(containerID: id)
+                    .backOnEscape { if !path.isEmpty { path.removeLast() } }
             }
             .searchable(text: $search, placement: .toolbar, prompt: "Filter containers")
             .toolbar {
@@ -184,9 +186,16 @@ struct ContainersView: View {
             }
             ContainerListContent(
                 containers: filtered, groupByKey: groupBy,
-                focusedGroup: focusedGroup, onFocusGroup: { focusedGroup = $0 }
+                focusedGroup: focusedGroup, onFocusGroup: { focusedGroup = $0 },
+                focus: $listFocused, acceptsRoutedFocus: path.isEmpty
             ) { path.append($0) }
                 .refreshIndicator(state.isRefreshing)
+                .onChange(of: path.isEmpty) {
+                    // Back restores the list selection; put keyboard focus back
+                    // there too. Deferred out of the update transaction (#17).
+                    guard path.isEmpty else { return }
+                    DispatchQueue.main.async { listFocused = true }
+                }
         }
         // A focused group that no longer exists (grouping changed, or all its
         // containers gone) should not silently hide everything.
@@ -273,61 +282,179 @@ enum ContainerGrouping {
 }
 
 struct ContainerListContent: View {
+    @EnvironmentObject var state: AppState
     let containers: [ContainerRecord]
     var scrollable = true
     var groupByKey: String = ""     // "" = flat list
     var focusedGroup: String? = nil // when set, only this group's value is shown
     var onFocusGroup: (String) -> Void = { _ in }
+    var focus: FocusState<Bool>.Binding? = nil
+    var acceptsRoutedFocus = true
     let open: (String) -> Void
 
     /// Persisted collapsed group ids ("<key>\n<value>"), newline-joined.
     @AppStorage("collapsedContainerGroups") private var collapsedRaw = ""
+    @State private var selection: Set<String> = []
+    @State private var confirmDelete = false
 
     /// Only group when the selected key is actually present, else fall back flat.
     private var effectiveKey: String {
         ContainerGrouping.availableKeys(containers).contains(groupByKey) ? groupByKey : ""
     }
 
+    private var collapsedIDs: Set<String> {
+        Set(collapsedRaw.split(separator: "\n").map(String.init))
+    }
+
+    private var groups: [(title: String, containers: [ContainerRecord])] {
+        var groups = ContainerGrouping.groups(containers, by: effectiveKey)
+        if let focusedGroup { groups = groups.filter { $0.title == focusedGroup } }
+        return groups
+    }
+
+    /// A focused single group can't usefully collapse.
+    private func isCollapsed(_ title: String) -> Bool {
+        focusedGroup == nil && collapsedIDs.contains("\(effectiveKey)\n\(title)")
+    }
+
+    /// Rows a bulk action may touch, in display order: collapsed groups' rows
+    /// stay out of both the selection and every group action.
+    private var visibleIDs: [String] {
+        guard !effectiveKey.isEmpty else { return containers.map(\.id) }
+        return groups.filter { !isCollapsed($0.title) }.flatMap { $0.containers.map(\.id) }
+    }
+
+    private var deleteTargets: [ContainerRecord] {
+        ListSelection.targets(containers, selected: selection, id: \.id)
+    }
+
     var body: some View {
-        if effectiveKey.isEmpty {
-            CardList(items: containers, scrollable: scrollable) { row($0) }
-        } else if scrollable {
-            ScrollView { grouped.thinScrollers() }
+        content
+            .confirmationDialog(
+                Text("Delete \(deleteTargets.count) Containers?",
+                     comment: "Confirmation title for deleting selected containers — the value is the number of containers."),
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    deleteTargets.forEach { state.deleteContainer($0) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                if deleteTargets.contains(where: \.isRunning) {
+                    Text("Running containers are force-deleted.",
+                         comment: "Confirmation detail when bulk-deleting containers: running ones cannot be stopped first.")
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if !scrollable {
+            staticContent
+        } else if effectiveKey.isEmpty {
+            SelectableList(
+                selection: $selection,
+                visibleIDs: visibleIDs,
+                primaryAction: { open($0) },
+                deleteAction: { requestDelete() },
+                focus: focus,
+                acceptsRoutedFocus: acceptsRoutedFocus,
+                content: {
+                    ForEach(containers) { container in
+                        nativeRow(container)
+                    }
+                },
+                menu: { rowMenu($0) }
+            )
         } else {
-            grouped
+            SelectableList(
+                selection: $selection,
+                visibleIDs: visibleIDs,
+                primaryAction: { open($0) },
+                deleteAction: { requestDelete() },
+                focus: focus,
+                acceptsRoutedFocus: acceptsRoutedFocus,
+                content: {
+                    ForEach(groups, id: \.title) { group in
+                        let isCollapsed = isCollapsed(group.title)
+                        Section {
+                            if !isCollapsed {
+                                ForEach(group.containers) { container in
+                                    nativeRow(container)
+                                }
+                            }
+                        } header: {
+                            GroupHeader(
+                                title: group.title, count: group.containers.count,
+                                containers: group.containers,
+                                collapsible: focusedGroup == nil,
+                                showActions: true, isCollapsed: isCollapsed,
+                                onToggle: { toggleCollapse("\(effectiveKey)\n\(group.title)") },
+                                onFocus: focusedGroup == nil ? { onFocusGroup(group.title) } : nil)
+                        }
+                    }
+                },
+                menu: { rowMenu($0) }
+            )
         }
     }
 
-    private var grouped: some View {
-        let collapsed = Set(collapsedRaw.split(separator: "\n").map(String.init))
-        var groups = ContainerGrouping.groups(containers, by: effectiveKey)
-        if let focusedGroup { groups = groups.filter { $0.title == focusedGroup } }
-        return LazyVStack(alignment: .leading, spacing: 2) {
-            ForEach(groups, id: \.title) { group in
-                let gid = "\(effectiveKey)\n\(group.title)"
-                // A focused single group can't usefully collapse.
-                let isCollapsed = focusedGroup == nil && collapsed.contains(gid)
-                GroupHeader(
-                    title: group.title, count: group.containers.count,
-                    containers: group.containers, collapsible: focusedGroup == nil,
-                    showActions: true, isCollapsed: isCollapsed,
-                    onToggle: { toggleCollapse(gid) },
-                    onFocus: focusedGroup == nil ? { onFocusGroup(group.title) } : nil)
-                if !isCollapsed {
-                    ForEach(group.containers) { row($0) }
+    /// The snapshot harness (`scrollable: false`) keeps the old static render —
+    /// ImageRenderer can't draw the table behind `List`.
+    @ViewBuilder
+    private var staticContent: some View {
+        if effectiveKey.isEmpty {
+            CardList(items: containers, scrollable: false) { staticRow($0) }
+        } else {
+            LazyVStack(alignment: .leading, spacing: 2) {
+                ForEach(groups, id: \.title) { group in
+                    let isCollapsed = isCollapsed(group.title)
+                    GroupHeader(
+                        title: group.title, count: group.containers.count,
+                        containers: group.containers, collapsible: focusedGroup == nil,
+                        showActions: true, isCollapsed: isCollapsed,
+                        onToggle: { toggleCollapse("\(effectiveKey)\n\(group.title)") },
+                        onFocus: focusedGroup == nil ? { onFocusGroup(group.title) } : nil)
+                    if !isCollapsed {
+                        ForEach(group.containers) { staticRow($0) }
+                    }
                 }
             }
+            .padding(10)
         }
-        .padding(10)
     }
 
     private func toggleCollapse(_ id: String) {
-        var set = Set(collapsedRaw.split(separator: "\n").map(String.init))
+        var set = collapsedIDs
         if set.contains(id) { set.remove(id) } else { set.insert(id) }
         collapsedRaw = set.sorted().joined(separator: "\n")
     }
 
-    @ViewBuilder private func row(_ container: ContainerRecord) -> some View {
+    private func requestDelete() {
+        guard !deleteTargets.isEmpty else { return }
+        confirmDelete = true
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ ids: Set<String>) -> some View {
+        let selected = containers.filter { ids.contains($0.id) }
+        if selected.count == 1, let container = selected.first {
+            ContainerActions(container: container, includeOpen: false)
+        } else if !selected.isEmpty {
+            ContainerBulkActions(containers: selected) { confirmDelete = true }
+        }
+    }
+
+    private func nativeRow(_ container: ContainerRecord) -> some View {
+        ListRowContent {
+            ContainerRow(container: container)
+        }
+        .selectableListRow()
+        .tag(container.id)
+    }
+
+    private func staticRow(_ container: ContainerRecord) -> some View {
         HoverRow(action: { open(container.id) }) {
             ContainerRow(container: container)
         }
@@ -565,5 +692,52 @@ struct ContainerActions: View {
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         state.exportContainer(container, to: url)
+    }
+}
+
+/// Actions for a multi-row container selection. Titles carry the number of
+/// rows the action will touch; an action with no applicable rows is omitted
+/// rather than disabled.
+struct ContainerBulkActions: View {
+    @EnvironmentObject var state: AppState
+    let containers: [ContainerRecord]
+    let onRequestDelete: () -> Void
+
+    private var running: [ContainerRecord] { containers.filter(\.isRunning) }
+    private var stopped: [ContainerRecord] { containers.filter { !$0.isRunning } }
+
+    var body: some View {
+        if !stopped.isEmpty {
+            Button { stopped.forEach { state.startContainer($0) } } label: {
+                Text("Start \(stopped.count) Containers",
+                     comment: "Bulk context-menu action — the value is the number of selected containers that are stopped.")
+            }
+        }
+        if !running.isEmpty {
+            Button { running.forEach { state.stopContainer($0) } } label: {
+                Text("Stop \(running.count) Containers",
+                     comment: "Bulk context-menu action — the value is the number of selected containers that are running.")
+            }
+            Button { running.forEach { state.restartContainer($0) } } label: {
+                Text("Restart \(running.count) Containers",
+                     comment: "Bulk context-menu action — the value is the number of selected containers that are running.")
+            }
+            Button { running.forEach { state.killContainer($0) } } label: {
+                Text("Kill \(running.count) Containers",
+                     comment: "Bulk context-menu action — the value is the number of selected containers that are running.")
+            }
+        }
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(containers.map(\.id).joined(separator: "\n"), forType: .string)
+        } label: {
+            Text("Copy \(containers.count) IDs",
+                 comment: "Bulk context-menu action — the value is the number of selected containers.")
+        }
+        Divider()
+        Button(role: .destructive, action: onRequestDelete) {
+            Text("Delete \(containers.count) Containers…",
+                 comment: "Bulk context-menu action that asks for confirmation — the value is the number of selected containers.")
+        }
     }
 }

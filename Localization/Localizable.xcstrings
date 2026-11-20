@@ -794,6 +794,59 @@
         }
       }
     },
+    "Boot %lld Machines" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected machines that are stopped.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Завантажити %lld машини"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Завантажити %lld машин"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Завантажити %lld машину"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Завантажити %lld машини"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Boot %lld Machine"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Boot %lld Machines"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Boot log" : {
       "localizations" : {
         "uk" : {
@@ -1354,6 +1407,88 @@
         }
       }
     },
+    "Copy %lld IDs" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected containers.",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копіювати %lld ID"
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Copy %lld ID"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Copy %lld IDs"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Copy %lld References" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected images.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Копіювати %lld посилання"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Копіювати %lld посилань"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Копіювати %lld посилання"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Копіювати %lld посилання"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Copy %lld Reference"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Copy %lld References"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Copy DNS Name (%@)" : {
       "comment" : "Context menu action — the value is the machine's DNS name.",
       "localizations" : {
@@ -1831,6 +1966,536 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Видалити"
+          }
+        }
+      }
+    },
+    "Delete %lld Containers?" : {
+      "comment" : "Confirmation title for deleting selected containers — the value is the number of containers.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнери?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнерів?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнер?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнера?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Container?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Containers?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Containers…" : {
+      "comment" : "Bulk context-menu action that asks for confirmation — the value is the number of selected containers.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнери…"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнерів…"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнер…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld контейнера…"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Container…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Containers…"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Images?" : {
+      "comment" : "Confirmation title for deleting selected images — the value is the number of images.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образи?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образів?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образ?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образа?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Image?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Images?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Images…" : {
+      "comment" : "Bulk context-menu action that asks for confirmation — the value is the number of selected images.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образи…"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образів…"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образ…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld образа…"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Image…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Images…"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Machines?" : {
+      "comment" : "Confirmation title for deleting selected machines — the value is the number of machines.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машини?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машин?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машину?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машини?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Machine?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Machines?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Machines…" : {
+      "comment" : "Bulk context-menu action that asks for confirmation — the value is the number of selected machines.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машини…"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машин…"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машину…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld машини…"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Machine…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Machines…"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Networks?" : {
+      "comment" : "Confirmation title for deleting selected networks — the value is the number of networks.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережі?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мереж?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережу?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережі?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Network?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Networks?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Networks…" : {
+      "comment" : "Bulk context-menu action that asks for confirmation — the value is the number of selected networks.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережі…"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мереж…"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережу…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld мережі…"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Network…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Networks…"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Volumes?" : {
+      "comment" : "Confirmation title for deleting selected volumes — the value is the number of volumes.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld томи?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld томів?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld том?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld тома?"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Volume?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Volumes?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete %lld Volumes…" : {
+      "comment" : "Bulk context-menu action that asks for confirmation — the value is the number of selected volumes.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld томи…"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld томів…"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld том…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Видалити %lld тома…"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Volume…"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Delete %lld Volumes…"
+                }
+              }
+            }
           }
         }
       }
@@ -2615,6 +3280,59 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Примусово зупинити"
+          }
+        }
+      }
+    },
+    "Kill %lld Containers" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected containers that are running.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Примусово зупинити %lld контейнери"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Примусово зупинити %lld контейнерів"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Примусово зупинити %lld контейнер"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Примусово зупинити %lld контейнера"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Kill %lld Container"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Kill %lld Containers"
+                }
+              }
+            }
           }
         }
       }
@@ -3471,6 +4189,59 @@
         }
       }
     },
+    "Pull Latest %lld Images" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected images.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Оновити до останньої версії %lld образи"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Оновити до останньої версії %lld образів"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Оновити до останньої версії %lld образ"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Оновити до останньої версії %lld образа"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pull Latest %lld Image"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pull Latest %lld Images"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Pull an image from a registry" : {
       "localizations" : {
         "uk" : {
@@ -3715,6 +4486,59 @@
         }
       }
     },
+    "Restart %lld Containers" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected containers that are running.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перезапустити %lld контейнери"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перезапустити %lld контейнерів"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перезапустити %lld контейнер"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перезапустити %lld контейнера"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Restart %lld Container"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Restart %lld Containers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Restart All" : {
       "localizations" : {
         "uk" : {
@@ -3863,6 +4687,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запущені контейнери"
+          }
+        }
+      }
+    },
+    "Running containers are force-deleted." : {
+      "comment" : "Confirmation detail when bulk-deleting containers: running ones cannot be stopped first.",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запущені контейнери буде примусово видалено."
           }
         }
       }
@@ -4051,6 +4886,59 @@
         }
       }
     },
+    "Start %lld Containers" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected containers that are stopped.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустити %lld контейнери"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустити %lld контейнерів"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустити %lld контейнер"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустити %lld контейнера"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Start %lld Container"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Start %lld Containers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Start All" : {
       "localizations" : {
         "uk" : {
@@ -4222,6 +5110,112 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зупинити"
+          }
+        }
+      }
+    },
+    "Stop %lld Containers" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected containers that are running.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld контейнери"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld контейнерів"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld контейнер"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld контейнера"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stop %lld Container"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stop %lld Containers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stop %lld Machines" : {
+      "comment" : "Bulk context-menu action — the value is the number of selected machines that are running.",
+      "localizations" : {
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld машини"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld машин"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld машину"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Зупинити %lld машини"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stop %lld Machine"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stop %lld Machines"
+                }
+              }
+            }
           }
         }
       }

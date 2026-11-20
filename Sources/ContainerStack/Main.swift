@@ -1087,6 +1087,12 @@ enum RunCLI {
 /// `davit selftest` — exercises the XPC-backed service layer end to end against
 /// the live daemon: lists, volume create/delete, container run/stop/start/delete.
 enum SelfTest {
+    /// Stand-ins for list rows in the "lists:" step. File-scope rather than
+    /// local to the step: local types inside this long function trip the
+    /// effects checker into bogus warnings on unrelated steps.
+    private struct ListProbeRow { let id: String; let running: Bool }
+    private struct ListProbeNet { let id: String; let builtin: Bool }
+
     /// Verbatim from issue #24: a run option typed into the command field.
     static let issue24Error = #"start test: internalError: "failed to start process test in container test (cause: "internalError: "failed to start process (cause: "internalError: "startProcess: failed to start process: internalError: "vmexec error: internalError: "failed to find target executable --platform"""")"")""#
 
@@ -3225,6 +3231,48 @@ enum SelfTest {
             if case .running(let reported) = try await ContainerService.systemState(),
                let reported, let running = PlatformVersion(reported), running != probed {
                 throw CLIError(command: "selftest", message: "running daemon is \(running) but resolution picked \(probed)")
+            }
+        }
+
+        await step("lists: selection pruning + bulk targets") {
+            // The 2s poll, the filter box and collapsed groups can all remove
+            // rows; a stale id must never survive into a bulk action.
+            let visible: Set<String> = ["a", "b"]
+            let pruned = ListSelection.pruned(["a", "b", "gone"], to: visible)
+            guard pruned == visible else {
+                throw CLIError(command: "selftest", message: "pruning kept \(pruned)")
+            }
+
+            // Double-click / Return opens only an unambiguous single row.
+            guard ListSelection.primaryTarget(Set<String>()) == nil,
+                  ListSelection.primaryTarget(["a", "b"]) == nil,
+                  ListSelection.primaryTarget(["a"]) == "a" else {
+                throw CLIError(command: "selftest", message: "primary action is not limited to one selected row")
+            }
+
+            // Containers in different states filter into different actions.
+            let rows = [
+                ListProbeRow(id: "run", running: true),
+                ListProbeRow(id: "stop", running: false),
+                ListProbeRow(id: "unselected", running: true),
+            ]
+            let selected: Set<String> = ["run", "stop"]
+            let toStop = ListSelection.targets(rows, selected: selected, id: \.id) { $0.running }
+            let toStart = ListSelection.targets(rows, selected: selected, id: \.id) { !$0.running }
+            guard toStop.map(\.id) == ["run"], toStart.map(\.id) == ["stop"] else {
+                throw CLIError(command: "selftest",
+                                message: "bulk targets: stop \(toStop.map(\.id)), start \(toStart.map(\.id))")
+            }
+
+            // Built-in networks are skipped; the count is the deletable subset.
+            let nets = [
+                ListProbeNet(id: "default", builtin: true),
+                ListProbeNet(id: "bridge0", builtin: false),
+                ListProbeNet(id: "lan", builtin: false),
+            ]
+            let deletable = ListSelection.targets(nets, selected: ["default", "lan"], id: \.id) { !$0.builtin }
+            guard deletable.map(\.id) == ["lan"], deletable.count == 1 else {
+                throw CLIError(command: "selftest", message: "network bulk targets: \(deletable.map(\.id))")
             }
         }
 

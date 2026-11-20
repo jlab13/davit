@@ -6,6 +6,9 @@ struct MachinesView: View {
     @EnvironmentObject var state: AppState
     @State private var showCreateSheet = false
     @State private var path: [String] = []
+    @State private var selection: Set<String> = []
+    @State private var confirmDelete = false
+    @FocusState private var listFocused: Bool
 
     var body: some View {
         NavigationStack(path: $path) { content }
@@ -31,6 +34,7 @@ struct MachinesView: View {
         .navigationTitle("Machines")
         .navigationDestination(for: String.self) { id in
             MachineDetailView(machineID: id)
+                .backOnEscape { if !path.isEmpty { path.removeLast() } }
         }
         .onChange(of: state.pendingOpen?.id) { consumePendingOpen() }
         .onAppear { consumePendingOpen() }
@@ -73,49 +77,133 @@ struct MachinesView: View {
     }
 
     private var list: some View {
-        CardList(items: state.machines, scrollable: true) { machine in
-            HoverRow(action: { path.append(machine.id) }) {
-                MachineRow(machine: machine)
-            }
-                .contextMenu {
-                    if machine.isRunning {
-                        Button("Stop") {
-                            state.perform(machine.id) { try await MachineService.stop(machine.id) }
-                        }
-                    } else {
-                        Button("Boot") {
-                            state.perform(machine.id) { try await MachineService.boot(machine.id) }
-                        }
+        SelectableList(
+            selection: $selection,
+            visibleIDs: state.machines.map(\.id),
+            primaryAction: { path.append($0) },
+            deleteAction: { requestDelete() },
+            focus: $listFocused,
+            acceptsRoutedFocus: path.isEmpty,
+            content: {
+                ForEach(state.machines) { machine in
+                    ListRowContent {
+                        MachineRow(machine: machine)
                     }
-                    if machine.isRunning {
-                        Button("Open Terminal") { TerminalLauncher.openMachineShell(machineID: machine.id) }
-                    }
-                    Button("Set as Default") {
-                        state.perform(machine.id) { try await MachineService.setDefault(machine.id) }
-                    }
-                    .disabled(machine.isDefault)
-                    Divider()
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(machine.dnsName, forType: .string)
-                    } label: {
-                        Text("Copy DNS Name (\(machine.dnsName))",
-                             comment: "Context menu action — the value is the machine's DNS name.")
-                    }
-                    if let ip = machine.ipAddress {
-                        Button {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(ip, forType: .string)
-                        } label: {
-                            Text("Copy IP (\(ip))",
-                                 comment: "Context menu action — the value is the machine's IP address.")
-                        }
-                    }
-                    Divider()
-                    Button("Delete", role: .destructive) {
-                        state.perform(machine.id) { try await MachineService.delete(machine.id) }
-                    }
+                    .selectableListRow()
+                    .tag(machine.id)
                 }
+            },
+            menu: { rowMenu($0) }
+        )
+        .onChange(of: path.isEmpty) {
+            // Back restores the list selection; put keyboard focus back there
+            // too. Deferred out of the update transaction (#17).
+            guard path.isEmpty else { return }
+            DispatchQueue.main.async { listFocused = true }
+        }
+        .confirmationDialog(
+            Text("Delete \(deleteTargets.count) Machines?",
+                 comment: "Confirmation title for deleting selected machines — the value is the number of machines."),
+            isPresented: $confirmDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                deleteTargets.forEach { machine in
+                    state.perform(machine.id) { try await MachineService.delete(machine.id) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private var deleteTargets: [MachineRecord] {
+        ListSelection.targets(state.machines, selected: selection, id: \.id)
+    }
+
+    private func requestDelete() {
+        guard !deleteTargets.isEmpty else { return }
+        confirmDelete = true
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ ids: Set<String>) -> some View {
+        let selected = state.machines.filter { ids.contains($0.id) }
+        if selected.count == 1, let machine = selected.first {
+            singleMenu(machine)
+        } else if !selected.isEmpty {
+            bulkMenu(selected)
+        }
+    }
+
+    @ViewBuilder
+    private func singleMenu(_ machine: MachineRecord) -> some View {
+        if machine.isRunning {
+            Button("Stop") {
+                state.perform(machine.id) { try await MachineService.stop(machine.id) }
+            }
+        } else {
+            Button("Boot") {
+                state.perform(machine.id) { try await MachineService.boot(machine.id) }
+            }
+        }
+        if machine.isRunning {
+            Button("Open Terminal") { TerminalLauncher.openMachineShell(machineID: machine.id) }
+        }
+        Button("Set as Default") {
+            state.perform(machine.id) { try await MachineService.setDefault(machine.id) }
+        }
+        .disabled(machine.isDefault)
+        Divider()
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(machine.dnsName, forType: .string)
+        } label: {
+            Text("Copy DNS Name (\(machine.dnsName))",
+                 comment: "Context menu action — the value is the machine's DNS name.")
+        }
+        if let ip = machine.ipAddress {
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(ip, forType: .string)
+            } label: {
+                Text("Copy IP (\(ip))",
+                     comment: "Context menu action — the value is the machine's IP address.")
+            }
+        }
+        Divider()
+        Button("Delete", role: .destructive) {
+            state.perform(machine.id) { try await MachineService.delete(machine.id) }
+        }
+    }
+
+    @ViewBuilder
+    private func bulkMenu(_ selected: [MachineRecord]) -> some View {
+        let stopped = selected.filter { !$0.isRunning }
+        let running = selected.filter(\.isRunning)
+        if !stopped.isEmpty {
+            Button {
+                stopped.forEach { machine in
+                    state.perform(machine.id) { try await MachineService.boot(machine.id) }
+                }
+            } label: {
+                Text("Boot \(stopped.count) Machines",
+                     comment: "Bulk context-menu action — the value is the number of selected machines that are stopped.")
+            }
+        }
+        if !running.isEmpty {
+            Button {
+                running.forEach { machine in
+                    state.perform(machine.id) { try await MachineService.stop(machine.id) }
+                }
+            } label: {
+                Text("Stop \(running.count) Machines",
+                     comment: "Bulk context-menu action — the value is the number of selected machines that are running.")
+            }
+        }
+        Divider()
+        Button(role: .destructive) { confirmDelete = true } label: {
+            Text("Delete \(selected.count) Machines…",
+                 comment: "Bulk context-menu action that asks for confirmation — the value is the number of selected machines.")
         }
     }
 }

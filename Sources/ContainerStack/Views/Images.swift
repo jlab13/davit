@@ -8,6 +8,7 @@ struct ImagesView: View {
     @State private var runFromImage: ImageRecord?
     @State private var pullLatestTarget: ImageRecord?
     @State private var path: [ImageRecord] = []
+    @FocusState private var listFocused: Bool
 
     private var filtered: [ImageRecord] {
         guard !search.isEmpty else { return state.images }
@@ -35,6 +36,7 @@ struct ImagesView: View {
             .navigationTitle("Images")
             .navigationDestination(for: ImageRecord.self) { image in
                 ImageDetailView(imageID: image.id)
+                    .backOnEscape { if !path.isEmpty { path.removeLast() } }
             }
             .onChange(of: state.pendingOpen?.id) { consumePendingOpen() }
             .onAppear { consumePendingOpen() }
@@ -79,8 +81,15 @@ struct ImagesView: View {
 
     private var list: some View {
         ImageListContent(images: filtered, open: { path.append($0) }, run: { runFromImage = $0 },
-                         pullLatest: { pullLatestTarget = $0 })
+                         pullLatest: { pullLatestTarget = $0 }, focus: $listFocused,
+                         acceptsRoutedFocus: path.isEmpty)
             .refreshIndicator(state.isRefreshing)
+            .onChange(of: path.isEmpty) {
+                // Back restores the list selection; put keyboard focus back
+                // there too. Deferred out of the update transaction (#17).
+                guard path.isEmpty else { return }
+                DispatchQueue.main.async { listFocused = true }
+            }
     }
 
     /// ⌘K jumped to an image: push its detail.
@@ -104,28 +113,117 @@ struct ImageListContent: View {
     let open: (ImageRecord) -> Void
     let run: (ImageRecord) -> Void
     var pullLatest: (ImageRecord) -> Void = { _ in }
+    var focus: FocusState<Bool>.Binding? = nil
+    var acceptsRoutedFocus = true
+
+    @State private var selection: Set<String> = []
+    @State private var confirmDelete = false
+
+    private var deleteTargets: [ImageRecord] {
+        ListSelection.targets(images, selected: selection, id: \.id)
+    }
 
     var body: some View {
-        CardList(items: images, scrollable: scrollable) { image in
-            HoverRow(action: { open(image) }) {
-                ImageRow(image: image)
-            }
-            .contextMenu {
-                Button {
-                    run(image)
-                } label: {
-                    Text("Run…", comment: "Context menu action that opens the run sheet for this image (verb).")
-                }
-                Button("Pull Latest") { pullLatest(image) }
-                Button("Copy Reference") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(image.name, forType: .string)
-                }
-                Divider()
+        if scrollable {
+            SelectableList(
+                selection: $selection,
+                visibleIDs: images.map(\.id),
+                primaryAction: { id in
+                    if let image = images.first(where: { $0.id == id }) { open(image) }
+                },
+                deleteAction: { requestDelete() },
+                focus: focus,
+                acceptsRoutedFocus: acceptsRoutedFocus,
+                content: {
+                    ForEach(images) { image in
+                        ListRowContent {
+                            ImageRow(image: image)
+                        }
+                        .selectableListRow()
+                        .tag(image.id)
+                    }
+                },
+                menu: { rowMenu($0) }
+            )
+            .confirmationDialog(
+                Text("Delete \(deleteTargets.count) Images?",
+                     comment: "Confirmation title for deleting selected images — the value is the number of images."),
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
                 Button("Delete", role: .destructive) {
-                    state.perform(image.id) { try await ContainerService.deleteImage(image.name) }
+                    deleteTargets.forEach { image in
+                        state.perform(image.id) { try await ContainerService.deleteImage(image.name) }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+        } else {
+            CardList(items: images, scrollable: false) { image in
+                HoverRow(action: { open(image) }) {
+                    ImageRow(image: image)
+                }
+                .contextMenu { singleMenu(image) }
+            }
+        }
+    }
+
+    private func requestDelete() {
+        guard !deleteTargets.isEmpty else { return }
+        confirmDelete = true
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ ids: Set<String>) -> some View {
+        let selected = images.filter { ids.contains($0.id) }
+        if selected.count == 1, let image = selected.first {
+            singleMenu(image)
+        } else if !selected.isEmpty {
+            bulkMenu(selected)
+        }
+    }
+
+    @ViewBuilder
+    private func singleMenu(_ image: ImageRecord) -> some View {
+        Button {
+            run(image)
+        } label: {
+            Text("Run…", comment: "Context menu action that opens the run sheet for this image (verb).")
+        }
+        Button("Pull Latest") { pullLatest(image) }
+        Button("Copy Reference") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(image.name, forType: .string)
+        }
+        Divider()
+        Button("Delete", role: .destructive) {
+            state.perform(image.id) { try await ContainerService.deleteImage(image.name) }
+        }
+    }
+
+    @ViewBuilder
+    private func bulkMenu(_ selected: [ImageRecord]) -> some View {
+        Button {
+            selected.forEach { image in
+                state.perform(image.id) {
+                    try await ContainerService.pullImage(image.name) { _ in }
                 }
             }
+        } label: {
+            Text("Pull Latest \(selected.count) Images",
+                 comment: "Bulk context-menu action — the value is the number of selected images.")
+        }
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(selected.map(\.name).joined(separator: "\n"), forType: .string)
+        } label: {
+            Text("Copy \(selected.count) References",
+                 comment: "Bulk context-menu action — the value is the number of selected images.")
+        }
+        Divider()
+        Button(role: .destructive) { confirmDelete = true } label: {
+            Text("Delete \(selected.count) Images…",
+                 comment: "Bulk context-menu action that asks for confirmation — the value is the number of selected images.")
         }
     }
 }
