@@ -24,6 +24,13 @@ final class AppState: ObservableObject {
     // Per-container disk space, refreshed on a slower cadence than the 2s poll.
     private var diskUsageCache: [String: Int64] = [:]
     private var diskUsageTick = 0
+    /// Space each volume occupies on disk, keyed by name. Refreshed when the
+    /// set of volumes changes and otherwise every few refreshes.
+    @Published var volumeUsage: [String: Int64] = [:]
+    private var volumeUsageTick = 0
+    /// Names last asked for, not the keys that came back: a volume whose
+    /// usage can't be read must not force a fetch on every refresh.
+    private var volumeUsageNames: Set<String> = []
 
     // UI state
     @Published var busyIDs: Set<String> = []
@@ -248,9 +255,22 @@ final class AppState: ObservableObject {
             containers = sorted
         }
         if let imgs { images = imgs.sorted { $0.shortNameTag < $1.shortNameTag } }
-        if let vols { volumes = vols.sorted { $0.name < $1.name } }
+        if let vols {
+            volumes = vols.sorted { $0.name < $1.name }
+            await refreshVolumeUsage()
+        }
         if let nets { networks = nets.sorted { $0.name < $1.name } }
         if let df { diskUsage = df }
+    }
+
+    private func refreshVolumeUsage() async {
+        let names = volumes.map(\.name)
+        volumeUsageTick += 1
+        // A new volume shows its size right away; otherwise usage changes
+        // slowly and costs one XPC call per volume, so poll it less often.
+        guard Set(names) != volumeUsageNames || volumeUsageTick % 5 == 1 else { return }
+        volumeUsageNames = Set(names)
+        volumeUsage = await ContainerService.volumeDiskUsage(for: names)
     }
 
     /// running -> stopped without a Davit-initiated stop/kill/delete. We read

@@ -1142,6 +1142,29 @@ enum SelfTest {
                 throw CLIError(command: "selftest", message: "infra container (buildkit) leaked into listContainers")
             }
         }
+        await step("volume size: configured maximum + space in use") {
+            // The list shows both: the maximum from `--size` and the allocated
+            // size of the sparse image, which must be far below it.
+            let name = "davit-selftest-volsize"
+            try? await ContainerService.deleteVolume(name)
+            try await ContainerService.createVolume(name: name, size: "64M")
+            do {
+                guard let volume = try await ContainerService.listVolumes().first(where: { $0.name == name }) else {
+                    throw CLIError(command: "selftest", message: "\(name) missing after create")
+                }
+                guard volume.sizeInBytes == 64 * 1024 * 1024 else {
+                    throw CLIError(command: "selftest", message: "configured size \(String(describing: volume.sizeInBytes)), expected 64 MiB")
+                }
+                guard let used = await ContainerService.volumeDiskUsage(for: [name])[name],
+                      used > 0, used < 64 * 1024 * 1024 else {
+                    throw CLIError(command: "selftest", message: "space in use not between 0 and the 64 MiB maximum")
+                }
+            } catch {
+                try? await ContainerService.deleteVolume(name)
+                throw error
+            }
+            try await ContainerService.deleteVolume(name)
+        }
         await step("volume create+delete") {
             try await ContainerService.createVolume(name: "davit-selftest-vol", size: nil)
             let names = try await ContainerService.listVolumes().map(\.name)

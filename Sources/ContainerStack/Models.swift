@@ -350,7 +350,8 @@ struct VolumeRecord: Identifiable, Hashable, Encodable {
         self.createdISO = isoString(configuration.creationDate)
         self.format = configuration.format
         self.source = configuration.source
-        self.sizeInBytes = nil
+        // The configured maximum (`--size`, 512G by default), not the space in use.
+        self.sizeInBytes = configuration.sizeInBytes.map { Int64(clamping: $0) }
     }
 
     /// Volumes are backed by "<appRoot>/volumes/<name>/volume.img"; extract <name>.

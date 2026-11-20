@@ -193,9 +193,16 @@ struct VolumeRow: View {
                     .foregroundStyle(.tertiary)
             }
             Spacer()
-            Text(relativeDate(volume.created))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            // Space in use on the right, like an image's size; the subtitle
+            // carries the configured maximum.
+            VStack(alignment: .trailing, spacing: 2) {
+                if let used = state.volumeUsage[volume.name] {
+                    Text(formatBytes(used)).font(.callout).foregroundStyle(.secondary)
+                }
+                Text(relativeDate(volume.created))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
             if state.busyIDs.contains(volume.id) {
                 ProgressView().controlSize(.small)
             }

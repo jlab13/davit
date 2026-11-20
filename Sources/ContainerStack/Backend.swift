@@ -459,6 +459,27 @@ enum ContainerService {
         try await ClientVolume.list().map(VolumeRecord.init(configuration:))
     }
 
+    /// Space each volume actually occupies on the host, in bytes, keyed by name.
+    /// Volumes are sparse disk images, so this is the allocated size the daemon
+    /// measures, far below the configured maximum for most volumes. Separate
+    /// from listVolumes: it's one XPC call per volume, which compose and the
+    /// selftest don't need.
+    static func volumeDiskUsage(for names: [String]) async -> [String: Int64] {
+        await withTaskGroup(of: (String, Int64)?.self) { group in
+            for name in names {
+                group.addTask {
+                    guard let bytes = try? await ClientVolume.volumeDiskUsage(name: name) else { return nil }
+                    return (name, Int64(clamping: bytes))
+                }
+            }
+            var out: [String: Int64] = [:]
+            for await entry in group {
+                if let (name, bytes) = entry { out[name] = bytes }
+            }
+            return out
+        }
+    }
+
     static func stats(for ids: [String]) async throws -> [StatsRecord] {
         let client = ContainerClient()
         return await withTaskGroup(of: StatsRecord?.self) { group in
